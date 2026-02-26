@@ -2,11 +2,11 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const TEXTURE_URLS = {
-  earthDay: "../assets/textures/earth_day.jpg",
-  earthNormal: "../assets/textures/earth_normal.jpg",
-  earthSpecular: "../assets/textures/earth_specular.jpg",
-  earthNight: "../assets/textures/earth_night.png",
-  earthClouds: "../assets/textures/earth_clouds.png"
+  earthDay: new URL("../assets/textures/earth_day.jpg", import.meta.url).href,
+  earthNormal: new URL("../assets/textures/earth_normal.jpg", import.meta.url).href,
+  earthSpecular: new URL("../assets/textures/earth_specular.jpg", import.meta.url).href,
+  earthNight: new URL("../assets/textures/earth_night.png", import.meta.url).href,
+  earthClouds: new URL("../assets/textures/earth_clouds.png", import.meta.url).href
 };
 
 const BOOT_TIMEOUT_MS = 12000;
