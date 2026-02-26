@@ -1,13 +1,16 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js";
-import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/controls/OrbitControls.js";
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const TEXTURE_URLS = {
-  earthDay: "https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg",
-  earthNormal: "https://threejs.org/examples/textures/planets/earth_normal_2048.jpg",
-  earthSpecular: "https://threejs.org/examples/textures/planets/earth_specular_2048.jpg",
-  earthNight: "https://threejs.org/examples/textures/planets/earth_lights_2048.png",
-  earthClouds: "https://threejs.org/examples/textures/planets/earth_clouds_1024.png"
+  earthDay: "../assets/textures/earth_day.jpg",
+  earthNormal: "../assets/textures/earth_normal.jpg",
+  earthSpecular: "../assets/textures/earth_specular.jpg",
+  earthNight: "../assets/textures/earth_night.png",
+  earthClouds: "../assets/textures/earth_clouds.png"
 };
+
+const BOOT_TIMEOUT_MS = 12000;
+const TEXTURE_TIMEOUT_MS = 8000;
 
 const sceneElement = document.querySelector("#scene");
 const loadingElement = document.querySelector("#loading");
@@ -16,45 +19,19 @@ const statusElement = document.querySelector("#rotation-status");
 
 const state = {
   isRotating: true,
-  meshesReady: false
+  meshesReady: false,
+  bootDone: false
 };
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 350);
 camera.position.set(0.18, 0.34, 3.55);
 
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  alpha: true,
-  powerPreference: "high-performance"
-});
-
 const maxPixelRatio = navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 1.3 : 1.9;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxPixelRatio));
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.08;
-sceneElement.appendChild(renderer.domElement);
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.045;
-controls.enablePan = false;
-controls.minDistance = 2.1;
-controls.maxDistance = 7;
-controls.minPolarAngle = Math.PI * 0.2;
-controls.maxPolarAngle = Math.PI * 0.8;
-controls.target.set(0, 0, 0);
-
-const ambientLight = new THREE.AmbientLight(0x97a9bf, 0.35);
-scene.add(ambientLight);
-
-const hemisphereLight = new THREE.HemisphereLight(0x8dc4ff, 0x0b1322, 0.35);
-scene.add(hemisphereLight);
-
-const sunLight = new THREE.DirectionalLight(0xffffff, 1.8);
-sunLight.position.set(5.4, 2.2, 5.8);
-scene.add(sunLight);
+let renderer = null;
+let controls = null;
+let sunLight = null;
 
 const earthSystem = new THREE.Group();
 scene.add(earthSystem);
@@ -64,72 +41,133 @@ tiltedPivot.rotation.z = THREE.MathUtils.degToRad(-23.4);
 earthSystem.add(tiltedPivot);
 
 const starLayers = [];
-createStarLayer(2600, 24, 80, 0.016);
-createStarLayer(1800, 70, 145, 0.006);
-
 const clock = new THREE.Clock();
 
-let earthMesh;
-let cloudsMesh;
-let atmosphereMesh;
-let nightLightsMesh;
+let earthMesh = null;
+let cloudsMesh = null;
+let atmosphereMesh = null;
+let nightLightsMesh = null;
 
-toggleButton.addEventListener("click", () => {
-  state.isRotating = !state.isRotating;
-  toggleButton.textContent = state.isRotating ? "暂停旋转" : "继续旋转";
-  statusElement.textContent = state.isRotating ? "正在旋转" : "已暂停";
-});
+bootstrap();
 
-renderer.domElement.addEventListener("dblclick", () => {
-  controls.reset();
-});
+function bootstrap() {
+  if (!supportsWebGL()) {
+    failStartup("当前浏览器不支持 WebGL，无法渲染地球。", "unsupported_webgl");
+    return;
+  }
 
-window.addEventListener("resize", handleResize);
-
-init().then(() => {
-  handleResize();
-  renderer.setAnimationLoop(animate);
-});
-
-async function init() {
   try {
-    const textures = await loadTextures();
-    buildEarth(textures);
-    state.meshesReady = true;
-    loadingElement.classList.add("hidden");
-    loadingElement.textContent = "";
+    renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: "high-performance"
+    });
   } catch (error) {
-    console.error("Texture loading failed, fallback to simple earth material", error);
-    buildEarth(null);
-    loadingElement.textContent = "Texture fallback mode";
-    window.setTimeout(() => loadingElement.classList.add("hidden"), 900);
-    state.meshesReady = true;
+    console.error("Failed to create renderer", error);
+    failStartup("WebGL 初始化失败，请检查浏览器硬件加速。", "renderer_init_failed");
+    return;
+  }
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxPixelRatio));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
+  sceneElement.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.045;
+  controls.enablePan = false;
+  controls.minDistance = 2.1;
+  controls.maxDistance = 7;
+  controls.minPolarAngle = Math.PI * 0.2;
+  controls.maxPolarAngle = Math.PI * 0.8;
+  controls.target.set(0, 0, 0);
+
+  const ambientLight = new THREE.AmbientLight(0x97a9bf, 0.35);
+  scene.add(ambientLight);
+
+  const hemisphereLight = new THREE.HemisphereLight(0x8dc4ff, 0x0b1322, 0.35);
+  scene.add(hemisphereLight);
+
+  sunLight = new THREE.DirectionalLight(0xffffff, 1.8);
+  sunLight.position.set(5.4, 2.2, 5.8);
+  scene.add(sunLight);
+
+  createStarLayer(2600, 24, 80, 0.016);
+  createStarLayer(1800, 70, 145, 0.006);
+
+  toggleButton.addEventListener("click", () => {
+    state.isRotating = !state.isRotating;
+    toggleButton.textContent = state.isRotating ? "暂停旋转" : "继续旋转";
+    statusElement.textContent = state.isRotating ? "正在旋转" : "已暂停";
+  });
+
+  renderer.domElement.addEventListener("dblclick", () => {
+    controls.reset();
+  });
+
+  window.addEventListener("resize", handleResize);
+
+  runBootSequence()
+    .then(() => {
+      handleResize();
+      renderer.setAnimationLoop(animate);
+    })
+    .catch((error) => {
+      console.error("Boot sequence failed", error);
+      if (!state.bootDone) {
+        buildEarth({});
+        finishBoot("资源加载超时，已启用基础模式");
+      }
+      handleResize();
+      renderer.setAnimationLoop(animate);
+    });
+}
+
+async function runBootSequence() {
+  setLoadingText("Loading Earth assets...");
+
+  const textures = await Promise.race([
+    loadTextures(),
+    delay(BOOT_TIMEOUT_MS).then(() => {
+      throw new Error("boot_timeout");
+    })
+  ]);
+
+  buildEarth(textures);
+
+  if (textures.earthDay) {
+    finishBoot("");
+  } else {
+    finishBoot("纹理受限，已启用简化模式");
   }
 }
 
 function buildEarth(textures) {
+  if (state.bootDone && earthMesh) {
+    return;
+  }
+
   const segmentCount = maxPixelRatio <= 1.3 ? 86 : 128;
   const globeGeometry = new THREE.SphereGeometry(1, segmentCount, segmentCount);
 
-  const earthMaterial = textures
-    ? new THREE.MeshPhongMaterial({
-        map: textures.earthDay,
-        normalMap: textures.earthNormal,
-        normalScale: new THREE.Vector2(0.85, 0.85),
-        specularMap: textures.earthSpecular,
-        specular: new THREE.Color(0x31506f),
-        shininess: 22
-      })
-    : new THREE.MeshPhongMaterial({
-        color: 0x4a98d1,
-        shininess: 18,
-        specular: new THREE.Color(0x204c6a)
-      });
+  const hasDay = Boolean(textures?.earthDay);
+
+  const earthMaterial = new THREE.MeshPhongMaterial({
+    color: hasDay ? 0xffffff : 0x4a98d1,
+    shininess: 22,
+    specular: new THREE.Color(0x31506f),
+    map: textures?.earthDay || null,
+    normalMap: textures?.earthNormal || null,
+    specularMap: textures?.earthSpecular || null,
+    normalScale: new THREE.Vector2(0.85, 0.85)
+  });
 
   earthMesh = new THREE.Mesh(globeGeometry, earthMaterial);
   tiltedPivot.add(earthMesh);
 
-  if (textures) {
+  if (textures?.earthClouds) {
     cloudsMesh = new THREE.Mesh(
       new THREE.SphereGeometry(1.011, segmentCount, segmentCount),
       new THREE.MeshPhongMaterial({
@@ -140,7 +178,9 @@ function buildEarth(textures) {
       })
     );
     tiltedPivot.add(cloudsMesh);
+  }
 
+  if (textures?.earthNight) {
     nightLightsMesh = new THREE.Mesh(
       new THREE.SphereGeometry(1.004, segmentCount, segmentCount),
       createNightLightMaterial(textures.earthNight)
@@ -228,38 +268,53 @@ async function loadTextures() {
   const loader = new THREE.TextureLoader();
   const anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
 
-  const [earthDay, earthNormal, earthSpecular, earthNight, earthClouds] = await Promise.all([
-    loadTexture(loader, TEXTURE_URLS.earthDay),
-    loadTexture(loader, TEXTURE_URLS.earthNormal, { colorSpace: THREE.NoColorSpace }),
-    loadTexture(loader, TEXTURE_URLS.earthSpecular, { colorSpace: THREE.NoColorSpace }),
-    loadTexture(loader, TEXTURE_URLS.earthNight),
-    loadTexture(loader, TEXTURE_URLS.earthClouds)
-  ]);
+  const requests = Object.entries(TEXTURE_URLS).map(([name, url]) =>
+    loadTextureWithTimeout(loader, name, url)
+  );
 
-  [earthDay, earthNight, earthClouds].forEach((texture) => {
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = anisotropy;
+  const results = await Promise.allSettled(requests);
+  const textures = {};
+
+  results.forEach((result) => {
+    if (result.status === "fulfilled") {
+      const { name, texture } = result.value;
+      texture.anisotropy = anisotropy;
+      textures[name] = texture;
+    } else {
+      console.warn("Texture load skipped", result.reason?.message || result.reason);
+    }
   });
 
-  [earthNormal, earthSpecular].forEach((texture) => {
-    texture.anisotropy = anisotropy;
-  });
+  if (textures.earthDay) {
+    textures.earthDay.colorSpace = THREE.SRGBColorSpace;
+  }
+  if (textures.earthNight) {
+    textures.earthNight.colorSpace = THREE.SRGBColorSpace;
+  }
+  if (textures.earthClouds) {
+    textures.earthClouds.colorSpace = THREE.SRGBColorSpace;
+  }
 
-  return { earthDay, earthNormal, earthSpecular, earthNight, earthClouds };
+  return textures;
 }
 
-function loadTexture(loader, url, options = {}) {
+function loadTextureWithTimeout(loader, name, url, timeoutMs = TEXTURE_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(`timeout:${name}`));
+    }, timeoutMs);
+
     loader.load(
       url,
       (texture) => {
-        if (options.colorSpace) {
-          texture.colorSpace = options.colorSpace;
-        }
-        resolve(texture);
+        clearTimeout(timer);
+        resolve({ name, texture });
       },
       undefined,
-      reject
+      (error) => {
+        clearTimeout(timer);
+        reject(error || new Error(`failed:${name}`));
+      }
     );
   });
 }
@@ -309,6 +364,10 @@ function createStarLayer(count, minRadius, maxRadius, baseSize) {
 }
 
 function handleResize() {
+  if (!renderer) {
+    return;
+  }
+
   const width = sceneElement.clientWidth;
   const height = sceneElement.clientHeight;
 
@@ -337,11 +396,60 @@ function animate() {
     layer.rotation.x = Math.sin(elapsed * 0.05 + index * 0.4) * 0.02;
   });
 
-  if (nightLightsMesh) {
+  if (nightLightsMesh && sunLight) {
     const sunDirection = sunLight.position.clone().normalize();
     nightLightsMesh.material.uniforms.sunDirection.value.copy(sunDirection);
   }
 
   controls.update();
   renderer.render(scene, camera);
+}
+
+function finishBoot(message) {
+  state.bootDone = true;
+  state.meshesReady = true;
+
+  if (message) {
+    setLoadingText(message);
+    window.setTimeout(() => {
+      loadingElement.classList.add("hidden");
+      loadingElement.textContent = "";
+    }, 900);
+    return;
+  }
+
+  loadingElement.classList.add("hidden");
+  loadingElement.textContent = "";
+}
+
+function failStartup(message, errorCode) {
+  loadingElement.classList.remove("hidden");
+  loadingElement.textContent = message;
+  statusElement.textContent = "渲染不可用";
+  toggleButton.disabled = true;
+  toggleButton.textContent = "不可用";
+  console.error(`startup_error:${errorCode}`);
+}
+
+function setLoadingText(text) {
+  loadingElement.classList.remove("hidden");
+  loadingElement.textContent = text;
+}
+
+function supportsWebGL() {
+  try {
+    const canvas = document.createElement("canvas");
+    return Boolean(
+      window.WebGLRenderingContext &&
+        (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }

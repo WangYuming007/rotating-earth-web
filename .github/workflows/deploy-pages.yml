@@ -28,6 +28,7 @@ jobs:
           cp index.html _site/
           cp -r src _site/
           if [ -d assets ]; then cp -r assets _site/; fi
+          if [ -d vendor ]; then cp -r vendor _site/; fi
           touch _site/.nojekyll
 
       - name: Upload Pages artifact
