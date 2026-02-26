@@ -40,6 +40,38 @@
           <button id="toggle-rotation" type="button">暂停旋转</button>
           <span id="rotation-status" role="status" aria-live="polite">正在旋转</span>
         </div>
+
+        <section class="system-panel" aria-label="Earth system simulation controls">
+          <div class="system-grid">
+            <label class="chip">
+              <input id="toggle-solar" type="checkbox" checked />
+              <span>Solar</span>
+            </label>
+            <label class="chip">
+              <input id="toggle-wind" type="checkbox" checked />
+              <span>Wind</span>
+            </label>
+            <label class="chip">
+              <input id="toggle-current" type="checkbox" checked />
+              <span>Current</span>
+            </label>
+            <label class="chip">
+              <input id="toggle-coupling" type="checkbox" checked />
+              <span>Coupling</span>
+            </label>
+            <label class="speed-control" for="time-speed">
+              <span>时间倍率</span>
+              <select id="time-speed">
+                <option value="1">x1</option>
+                <option value="10">x10</option>
+                <option value="60" selected>x60</option>
+                <option value="240">x240</option>
+              </select>
+            </label>
+          </div>
+          <p id="utc-readout" class="system-readout">UTC --</p>
+          <p id="flow-readout" class="system-readout">Wind -- | Current --</p>
+        </section>
       </header>
 
       <section class="scene-shell" aria-label="3D rotating earth scene">
