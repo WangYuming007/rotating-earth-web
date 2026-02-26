@@ -30,3 +30,9 @@ python3 -m http.server 5173
 
 首次启用时，如果 Actions 提示未启用 Pages，请在仓库设置中确认：
 - `Settings` -> `Pages` -> `Build and deployment` -> `Source` 选择 `GitHub Actions`
+
+## 视觉优化记录
+- `Atmosphere v3`（2026-02-26）：
+  - 缩小大气层外壳半径，去除厚重蓝色描边。
+  - 大气光晕按太阳方向分区（日侧/夜侧/黄昏带），增强真实感。
+  - 下调光晕强度与透明度上限，保证地球主体细节优先。

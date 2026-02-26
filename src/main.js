@@ -189,7 +189,7 @@ function buildEarth(textures) {
   }
 
   atmosphereMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(1.09, 92, 92),
+    new THREE.SphereGeometry(1.026, 96, 96),
     createAtmosphereMaterial()
   );
   tiltedPivot.add(atmosphereMesh);
@@ -235,26 +235,57 @@ function createNightLightMaterial(nightTexture) {
 function createAtmosphereMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: {
-      glowColor: { value: new THREE.Color(0x80d5ff) }
+      dayColor: { value: new THREE.Color(0x8fd8ff) },
+      nightColor: { value: new THREE.Color(0x16355f) },
+      twilightColor: { value: new THREE.Color(0xffbd7c) },
+      sunDirection: { value: new THREE.Vector3(1, 0, 0) },
+      rimPower: { value: 6.4 },
+      baseIntensity: { value: 0.15 },
+      dayBoost: { value: 0.16 },
+      nightBoost: { value: 0.05 },
+      twilightBoost: { value: 0.11 }
     },
     vertexShader: `
-      varying vec3 vNormal;
+      varying vec3 vNormalWorld;
       varying vec3 vViewDir;
       void main() {
         vec4 worldPos = modelMatrix * vec4(position, 1.0);
-        vNormal = normalize(mat3(modelMatrix) * normal);
+        vNormalWorld = normalize(mat3(modelMatrix) * normal);
         vViewDir = normalize(cameraPosition - worldPos.xyz);
         gl_Position = projectionMatrix * viewMatrix * worldPos;
       }
     `,
     fragmentShader: `
-      uniform vec3 glowColor;
-      varying vec3 vNormal;
+      uniform vec3 dayColor;
+      uniform vec3 nightColor;
+      uniform vec3 twilightColor;
+      uniform vec3 sunDirection;
+      uniform float rimPower;
+      uniform float baseIntensity;
+      uniform float dayBoost;
+      uniform float nightBoost;
+      uniform float twilightBoost;
+      varying vec3 vNormalWorld;
       varying vec3 vViewDir;
       void main() {
-        float fresnel = pow(1.0 - max(dot(normalize(vNormal), normalize(vViewDir)), 0.0), 3.2);
-        float intensity = smoothstep(0.0, 1.0, fresnel) * 0.85;
-        gl_FragColor = vec4(glowColor * intensity, intensity * 0.85);
+        vec3 normal = normalize(vNormalWorld);
+        vec3 viewDir = normalize(vViewDir);
+        vec3 sunDir = normalize(sunDirection);
+
+        float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), rimPower);
+        float lit = dot(normal, sunDir);
+        float dayMask = smoothstep(-0.08, 0.52, lit);
+        float twilightMask = smoothstep(0.24, 0.0, abs(lit));
+
+        float variation = sin(dot(normal, vec3(19.0, 27.0, 31.0))) * 0.03 + 0.97;
+        float band = baseIntensity + mix(nightBoost, dayBoost, dayMask) + twilightMask * twilightBoost;
+        float intensity = rim * band * variation;
+
+        vec3 tone = mix(nightColor, dayColor, dayMask);
+        tone += twilightColor * twilightMask * 0.2;
+
+        float alpha = clamp(intensity * 0.92, 0.0, 0.36);
+        gl_FragColor = vec4(tone * intensity, alpha);
       }
     `,
     transparent: true,
@@ -396,9 +427,16 @@ function animate() {
     layer.rotation.x = Math.sin(elapsed * 0.05 + index * 0.4) * 0.02;
   });
 
-  if (nightLightsMesh && sunLight) {
+  if (sunLight) {
     const sunDirection = sunLight.position.clone().normalize();
-    nightLightsMesh.material.uniforms.sunDirection.value.copy(sunDirection);
+
+    if (nightLightsMesh) {
+      nightLightsMesh.material.uniforms.sunDirection.value.copy(sunDirection);
+    }
+
+    if (atmosphereMesh?.material?.uniforms?.sunDirection) {
+      atmosphereMesh.material.uniforms.sunDirection.value.copy(sunDirection);
+    }
   }
 
   controls.update();
