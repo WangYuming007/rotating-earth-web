@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Earth Pulse | Rotating Earth Experience</title>
+    <meta
+      name="description"
+      content="A polished rotating Earth webpage with dynamic lighting, cloud motion, and interactive controls."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div class="page-bg" aria-hidden="true"></div>
+    <div class="noise" aria-hidden="true"></div>
+
+    <main class="layout">
+      <header class="hero">
+        <p class="kicker">Interactive 3D Showcase</p>
+        <h1>Earth Pulse</h1>
+        <p class="subtitle">
+          深空中的旋转地球，支持拖拽观察与缩放，带有夜景灯光、云层与大气光晕。
+        </p>
+
+        <div class="actions">
+          <button id="toggle-rotation" type="button">暂停旋转</button>
+          <span id="rotation-status" role="status" aria-live="polite">正在旋转</span>
+        </div>
+      </header>
+
+      <section class="scene-shell" aria-label="3D rotating earth scene">
+        <div id="scene"></div>
+        <div id="loading" class="loading">Loading Earth...</div>
+      </section>
+
+      <footer class="footer-hint">
+        操作提示：拖拽旋转视角 · 滚轮缩放 · 双击重置
+      </footer>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

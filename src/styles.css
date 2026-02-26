@@ -1,0 +1,199 @@
+:root {
+  --bg-start: #02030a;
+  --bg-mid: #061426;
+  --bg-end: #0a1f38;
+  --panel: rgba(7, 18, 34, 0.62);
+  --panel-border: rgba(133, 179, 255, 0.35);
+  --text-main: #f4f8ff;
+  --text-muted: #b9c8dd;
+  --accent: #78d6ff;
+  --accent-strong: #a8f4ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: "Space Grotesk", sans-serif;
+  color: var(--text-main);
+  background: var(--bg-start);
+}
+
+body {
+  overflow: hidden;
+}
+
+.page-bg {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(50, 143, 255, 0.26), transparent 42%),
+    radial-gradient(circle at 80% 18%, rgba(77, 245, 255, 0.16), transparent 37%),
+    linear-gradient(140deg, var(--bg-start) 15%, var(--bg-mid) 50%, var(--bg-end) 100%);
+  z-index: -3;
+}
+
+.noise {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  opacity: 0.2;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.2) 0.45px, transparent 0.45px);
+  background-size: 3px 3px;
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 70%, transparent 100%);
+}
+
+.layout {
+  width: min(1200px, 100% - 32px);
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 18px;
+  padding: 18px 0 14px;
+}
+
+.hero {
+  background: linear-gradient(130deg, rgba(9, 20, 38, 0.82), rgba(8, 28, 56, 0.62));
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  padding: 16px 18px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.35);
+}
+
+.kicker {
+  margin: 0;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hero h1 {
+  margin: 6px 0 4px;
+  font-family: "Orbitron", sans-serif;
+  font-weight: 700;
+  font-size: clamp(30px, 5.4vw, 56px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 16px rgba(120, 214, 255, 0.35);
+}
+
+.subtitle {
+  margin: 0;
+  max-width: 740px;
+  color: var(--text-muted);
+  font-size: clamp(14px, 2.1vw, 17px);
+}
+
+.actions {
+  margin-top: 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#toggle-rotation {
+  appearance: none;
+  border: 1px solid rgba(168, 244, 255, 0.4);
+  border-radius: 999px;
+  background: linear-gradient(140deg, rgba(95, 220, 255, 0.3), rgba(100, 130, 255, 0.22));
+  color: #ecfbff;
+  padding: 9px 16px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+#toggle-rotation:hover {
+  transform: translateY(-1px);
+  border-color: rgba(168, 244, 255, 0.75);
+  box-shadow: 0 10px 26px rgba(0, 205, 255, 0.24);
+}
+
+#rotation-status {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.scene-shell {
+  position: relative;
+  min-height: 380px;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(130, 179, 255, 0.35);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(30, 91, 176, 0.18), transparent 54%),
+    rgba(4, 11, 22, 0.84);
+  box-shadow: 0 36px 80px rgba(0, 0, 0, 0.45);
+}
+
+#scene {
+  position: absolute;
+  inset: 0;
+}
+
+#scene canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(168, 244, 255, 0.32);
+  background: rgba(5, 16, 30, 0.72);
+  color: #d7efff;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+.loading.hidden {
+  opacity: 0;
+}
+
+.footer-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(202, 217, 237, 0.8);
+  letter-spacing: 0.03em;
+}
+
+@media (max-width: 860px) {
+  .layout {
+    width: calc(100% - 20px);
+    gap: 12px;
+    padding: 10px 0;
+  }
+
+  .hero {
+    border-radius: 14px;
+    padding: 12px;
+  }
+
+  .scene-shell {
+    min-height: 320px;
+    border-radius: 16px;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
